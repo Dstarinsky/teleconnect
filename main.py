@@ -48,6 +48,9 @@ NAME, PHONE, AREA, CITY, CAPACITY, DATE, EDIT_FIELD, EDIT_VALUE = range(8)
 
 ad_editing = {}
 
+def is_valid_text(text):
+    return re.fullmatch(r"[א-תA-Za-z\s\-]+", text) is not None
+
 def is_valid_phone(phone):
     return re.fullmatch(r"\d{7,15}", phone) is not None
 
@@ -135,23 +138,29 @@ async def start_post_ad(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return NAME
 
 async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['name'] = update.message.text.strip()
+    name = update.message.text.strip()
+    if not is_valid_text(name):
+        await update.message.reply_text("❗ השם צריך להכיל אותיות בלבד.")
+        return NAME
+
+    context.user_data['name'] = name
     await update.message.reply_text("📞 מה מספר הטלפון שלך?")
     return PHONE
-
 async def get_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
     phone = update.message.text.strip()
     if not is_valid_phone(phone):
-        await update.message.reply_text("❗ מספר טלפון לא חוקי. השתמש רק במספרים (7–15 ספרות).")
+        await update.message.reply_text("❗ מספר טלפון לא חוקי. הזן 7–15 ספרות בלבד.")
         return PHONE
+
     context.user_data['phone'] = phone
+
     keyboard = [
         [InlineKeyboardButton("🌍 צפון", callback_data="area:צפון"),
          InlineKeyboardButton("🏙️ מרכז", callback_data="area:מרכז")],
-        [InlineKeyboardButton("🏜️ דרום", callback_data="area:דרום"),
-         InlineKeyboardButton("🌅 אילת", callback_data="area:אילת")],
+        [InlineKeyboardButton("🏜️ דרום", callback_data="area:דרום")],
         [InlineKeyboardButton("❓ אחר", callback_data="area:אחר")]
     ]
+
     await update.message.reply_text("📍 בחר אזור:", reply_markup=InlineKeyboardMarkup(keyboard))
     return AREA
 
@@ -162,7 +171,12 @@ async def get_area(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return CITY
 
 async def get_city(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['city'] = update.message.text.strip()
+    city = update.message.text.strip()
+    if not is_valid_text(city):
+        await update.message.reply_text("❗ שם העיר צריך להכיל אותיות בלבד.")
+        return CITY
+
+    context.user_data['city'] = city
     await update.message.reply_text("👥 כמה אנשים אתה יכול לארח? (1–100)")
     return CAPACITY
 
@@ -175,13 +189,13 @@ async def get_capacity(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❗ הזן מספר בין 1 ל-100.")
         return CAPACITY
     context.user_data['capacity'] = val
-    await update.message.reply_text("📅 באיזה תאריך אתה זמין? (YYYY-MM-DD)")
+    await update.message.reply_text("📅 מאיזה תאריך את/ה לארח? (פורמט התשובה YYYY-MM-DD, לדוגמא 2025-12-12)")
     return DATE
 
 async def get_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     date_str = update.message.text.strip()
     if not is_valid_date(date_str):
-        await update.message.reply_text("❗ תאריך לא חוקי. פורמט: YYYY-MM-DD")
+        await update.message.reply_text("❗ תאריך לא חוקי.פורמט התשובה YYYY-MM-DD, לדוגמא 2025-12-12")
         return DATE
 
     context.user_data['date'] = date_str
@@ -261,7 +275,7 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await show_all_ads(update, context)
     elif query.data == 'search_by_area':
         await show_area_options(update, context)
-    elif query.data.startswith("choose_area:"):
+    elif query.data.startswith("area_filter:"):
         await show_ads_by_area(update, context)
     elif query.data == 'my_ads':
         await show_my_ads(update, context)
@@ -295,10 +309,8 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if field == "area":
             keyboard = [
                 [InlineKeyboardButton("🌍 צפון", callback_data="value:צפון"),
-                 InlineKeyboardButton("🏙️ מרכז", callback_data="value:מרכז")],
-                [InlineKeyboardButton("🏜️ דרום", callback_data="value:דרום"),
-                 InlineKeyboardButton("🌅 אילת", callback_data="value:אילת")],
-                [InlineKeyboardButton("❓ אחר", callback_data="value:אחר")]
+                 InlineKeyboardButton("🏙️ מרכז", callback_data="value:מרכז"),
+                 InlineKeyboardButton("🏜️ דרום", callback_data="value:דרום")]
             ]
             await query.message.reply_text("📍 בחר אזור חדש:", reply_markup=InlineKeyboardMarkup(keyboard))
             return EDIT_VALUE
@@ -330,6 +342,8 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.delete()
         await start(update, context)
 
+def is_valid_text(text):
+    return re.fullmatch(r"[א-תA-Za-z\s\-]+", text) is not None
 
 async def update_ad_value(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -359,7 +373,7 @@ async def update_ad_value(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await target.reply_text("❗ מספר לא חוקי. טווח 1-100.")
             return EDIT_VALUE
     if field == 'date' and not is_valid_date(value):
-        await target.reply_text("❗ תאריך לא חוקי. פורמט: YYYY-MM-DD")
+        await target.reply_text("❗ תאריך לא חוקי. פורמט התשובה YYYY-MM-DD, לדוגמא 2025-12-12")
         return EDIT_VALUE
 
     conn = db_pool.get_connection()
@@ -385,7 +399,7 @@ async def show_area_options(update: Update, context: ContextTypes.DEFAULT_TYPE):
          InlineKeyboardButton("🏙️ מרכז", callback_data="area_filter:מרכז")],
         [InlineKeyboardButton("🏜️ דרום", callback_data="area_filter:דרום"),
          InlineKeyboardButton("🌅 אילת", callback_data="area_filter:אילת")],
-        [InlineKeyboardButton("❓ אחר", callback_data="area_filter:אחר")],
+
         [InlineKeyboardButton("🔙 חזרה לתפריט", callback_data="main_menu")]
     ]
     await update.callback_query.message.reply_text(

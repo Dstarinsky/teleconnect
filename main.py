@@ -471,9 +471,7 @@ if __name__ == '__main__':
         asyncio.run(main())
     except RuntimeError as e:
         if "already running" in str(e):
-            # Fallback for environments where the loop is already running
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             loop.create_task(main())
-            loop.run_forever()
         else:
             raise

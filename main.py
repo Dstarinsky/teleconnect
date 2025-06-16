@@ -467,10 +467,21 @@ async def main():
 if __name__ == '__main__':
     import asyncio
 
+    async def safe_main():
+        try:
+            await main()
+        except RuntimeError as e:
+            if "This event loop is already running" in str(e):
+                # If already running, just create task without awaiting main()
+                asyncio.get_running_loop().create_task(main())
+            else:
+                raise
+
     try:
-        asyncio.run(main())
+        asyncio.run(safe_main())
     except RuntimeError as e:
-        if "already running" in str(e):
+        if "This event loop is already running" in str(e):
+            # For environments where the loop is already running at startup
             loop = asyncio.get_running_loop()
             loop.create_task(main())
         else:

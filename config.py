@@ -7,6 +7,7 @@ def load_environment(env_file: str = ".env"):
     load_dotenv(dotenv_path=env_file)
 
 def create_db_pool():
+
     return pooling.MySQLConnectionPool(
         pool_name="bot_pool",
         pool_size=5,

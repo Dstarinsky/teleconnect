@@ -1,4 +1,5 @@
 import os
+import asyncio
 import logging
 import warnings
 from telegram.warnings import PTBUserWarning
@@ -429,9 +430,11 @@ async def show_ads_by_area(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 חזרה לתפריט", callback_data='main_menu')]])
     )
 
+
 def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
+    # Your handlers setup
     conv_handler = ConversationHandler(
         entry_points=[CallbackQueryHandler(start_post_ad, pattern='^post_ad$')],
         states={
@@ -442,7 +445,8 @@ def main():
             CAPACITY: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_capacity)],
             DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_date)],
             EDIT_FIELD: [CallbackQueryHandler(handle_buttons, pattern='^field:.*')],
-            EDIT_VALUE: [MessageHandler(filters.TEXT & ~filters.COMMAND, update_ad_value), CallbackQueryHandler(handle_buttons, pattern='^value:.*')]
+            EDIT_VALUE: [MessageHandler(filters.TEXT & ~filters.COMMAND, update_ad_value),
+                         CallbackQueryHandler(handle_buttons, pattern='^value:.*')]
         },
         fallbacks=[]
     )
@@ -453,8 +457,12 @@ def main():
     app.add_error_handler(error_handler)
 
     print("🤖 Running Telegram bot...")
-    app.run_polling()
 
+    async def run():
+        await app.bot.delete_webhook(drop_pending_updates=True)
+        await app.run_polling()
+
+    asyncio.run(run())
 
 if __name__ == '__main__':
     main()

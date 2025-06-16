@@ -12,6 +12,12 @@ from telegram.ext import (
 )
 from telegram.warnings import PTBUserWarning
 
+# Set environment file explicitly if not production
+if os.getenv("ENV") == "dev":
+    load_dotenv(dotenv_path=".env.dev")
+else:
+    load_dotenv()
+
 warnings.filterwarnings("ignore", category=PTBUserWarning)
 
 logging.basicConfig(
@@ -20,32 +26,34 @@ logging.basicConfig(
     filename="bot.log"
 )
 
-load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 DB_HOST = os.getenv("DB_HOST")
 DB_USER = os.getenv("DB_USER")
 DB_PASS = os.getenv("DB_PASS")
 DB_NAME = os.getenv("DB_NAME")
-
-print("DB_HOST =", os.getenv("DB_HOST"))
-print("DB_USER =", os.getenv("DB_USER"))
-print("DB_NAME =", os.getenv("DB_NAME"))
-print("DB_PORT =", os.getenv("DB_PORT"))
-import os
+DB_PORT = int(os.getenv("DB_PORT", 3306))
 
 db_pool = pooling.MySQLConnectionPool(
     pool_name="bot_pool",
     pool_size=5,
     pool_reset_session=True,
-    host=os.getenv("DB_HOST"),
-    port=int(os.getenv("DB_PORT", 3306)),
-    user=os.getenv("DB_USER"),
-    password=os.getenv("DB_PASS"),
-    database=os.getenv("DB_NAME")
+    host=DB_HOST,
+    port=DB_PORT,
+    user=DB_USER,
+    password=DB_PASS,
+    database=DB_NAME
 )
 
+# Exported state constants
 NAME, PHONE, AREA, CITY, CAPACITY, DATE, EDIT_FIELD, EDIT_VALUE = range(8)
 
+# Export shared handlers and variables
+__all__ = [
+    "db_pool", "BOT_TOKEN",
+    "NAME", "PHONE", "AREA", "CITY", "CAPACITY", "DATE", "EDIT_FIELD", "EDIT_VALUE",
+    "get_name", "get_phone", "get_area", "get_city", "get_capacity", "get_date",
+    "update_ad_value", "handle_buttons", "error_handler", "start", "start_post_ad"
+]
 ad_editing = {}
 
 def is_valid_text(text):
@@ -74,8 +82,8 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     intro_text = (
-        "🏠 *ברוכים הבאים לבוט החיבור בין מארחים לבין מי שביתו נפגע*\n\n"
-        "בוט זה נועד לסייע בחיבור בין אנשים שיכולים להציע מקום לינה, לבין אלו שביתם נפגע והם זקוקים לאירוח זמני.\n\n"
+        "🏠 *ברוכים הבאים לבוט החיבור בין מארחים לבין מי שמחפש אירוח זמני בעקבות המצב*\n\n"
+        "בוט זה נועד לסייע בחיבור בין אנשים שיכולים להציע מקום לינה, לבין אלו שביתם נפגע *או שמסיבות אחרות זקוקים לאירוח זמני*.\n\n"
         "💡 באמצעות הבוט ניתן:\n"
         "• לפרסם מודעת אירוח\n"
         "• לצפות בכל המודעות או לסנן לפי אזור\n"
@@ -95,10 +103,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if update.callback_query:
         await update.callback_query.message.reply_text(intro_text)
-        await update.callback_query.message.reply_text("בחר פעולה:", reply_markup=reply_markup)
+        await update.callback_query.message.reply_text("בחר/י פעולה:", reply_markup=reply_markup)
     else:
         await update.message.reply_text(intro_text)
-        await update.message.reply_text("בחר פעולה:", reply_markup=reply_markup)
+        await update.message.reply_text("בחר/י פעולה:", reply_markup=reply_markup)
 
 async def show_all_ads(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conn = db_pool.get_connection()
@@ -134,7 +142,7 @@ async def show_all_ads(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def start_post_ad(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
-    await update.callback_query.message.reply_text("📋 בוא ניצור מודעה חדשה. איך קוראים לך?")
+    await update.callback_query.message.reply_text("📋 בוא/י ניצור מודעה חדשה. איך קוראים לך?")
     return NAME
 
 async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -177,7 +185,7 @@ async def get_city(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return CITY
 
     context.user_data['city'] = city
-    await update.message.reply_text("👥 כמה אנשים אתה יכול לארח? (1–100)")
+    await update.message.reply_text("👥 כמה אנשים את/ה יכול/ה לארח? (1–100)")
     return CAPACITY
 
 async def get_capacity(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -189,13 +197,13 @@ async def get_capacity(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❗ הזן מספר בין 1 ל-100.")
         return CAPACITY
     context.user_data['capacity'] = val
-    await update.message.reply_text("📅 מאיזה תאריך את/ה לארח? (פורמט התשובה YYYY-MM-DD, לדוגמא 2025-12-12)")
+    await update.message.reply_text("📅 מאיזה תאריך את/ה לארח? (פורמט התשובה YYYY-MM-DD, לדוגמא 2025-12-25)")
     return DATE
 
 async def get_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     date_str = update.message.text.strip()
     if not is_valid_date(date_str):
-        await update.message.reply_text("❗ תאריך לא חוקי.פורמט התשובה YYYY-MM-DD, לדוגמא 2025-12-12")
+        await update.message.reply_text("❗ תאריך לא חוקי.פורמט התשובה YYYY-MM-DD, לדוגמא 2025-12-25")
         return DATE
 
     context.user_data['date'] = date_str
@@ -312,10 +320,10 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
                  InlineKeyboardButton("🏙️ מרכז", callback_data="value:מרכז"),
                  InlineKeyboardButton("🏜️ דרום", callback_data="value:דרום")]
             ]
-            await query.message.reply_text("📍 בחר אזור חדש:", reply_markup=InlineKeyboardMarkup(keyboard))
+            await query.message.reply_text("📍 בחר/י אזור חדש:", reply_markup=InlineKeyboardMarkup(keyboard))
             return EDIT_VALUE
         else:
-            await query.message.reply_text("✏️ הזן ערך חדש:")
+            await query.message.reply_text("✏️ הזן/י ערך חדש:")
             return EDIT_VALUE
     elif query.data.startswith("value:"):
         value = query.data.split(":")[1]
@@ -373,7 +381,7 @@ async def update_ad_value(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await target.reply_text("❗ מספר לא חוקי. טווח 1-100.")
             return EDIT_VALUE
     if field == 'date' and not is_valid_date(value):
-        await target.reply_text("❗ תאריך לא חוקי. פורמט התשובה YYYY-MM-DD, לדוגמא 2025-12-12")
+        await target.reply_text("❗ תאריך לא חוקי. פורמט התשובה YYYY-MM-DD, לדוגמא 2025-12-22")
         return EDIT_VALUE
 
     conn = db_pool.get_connection()
@@ -396,11 +404,10 @@ async def update_ad_value(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def show_area_options(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("🌍 צפון", callback_data="area_filter:צפון"),
-         InlineKeyboardButton("🏙️ מרכז", callback_data="area_filter:מרכז")],
-        [InlineKeyboardButton("🏜️ דרום", callback_data="area_filter:דרום"),
-         InlineKeyboardButton("🌅 אילת", callback_data="area_filter:אילת")],
+         InlineKeyboardButton("🏙️ מרכז", callback_data="area_filter:מרכז"),
+         InlineKeyboardButton("🏜️ דרום", callback_data="area_filter:דרום")]
 
-        [InlineKeyboardButton("🔙 חזרה לתפריט", callback_data="main_menu")]
+
     ]
     await update.callback_query.message.reply_text(
         "📍 בחר אזור להצגת מודעות:",

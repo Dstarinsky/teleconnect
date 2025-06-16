@@ -2,6 +2,7 @@
 .env
 .venv/
 .idea/
+.env.test
 
 # Ignore log and cache files
 *.log
@@ -14,4 +15,8 @@ __pycache__/
 get-pip.py
 
 # macOS system files
-.DS_Store
+.DS_Store.env.test
+
+# test & dev env files
+test_main.py
+

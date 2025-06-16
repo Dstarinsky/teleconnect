@@ -1,47 +1,26 @@
 import os
-import re
 import logging
 import warnings
-from dotenv import load_dotenv
-from datetime import datetime
-from mysql.connector import pooling
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.warnings import PTBUserWarning
+from dotenv import load_dotenv  # optional
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, MessageHandler, ConversationHandler,
     CallbackQueryHandler, ContextTypes, filters
 )
-from telegram.warnings import PTBUserWarning
+from telegram import Update
+from config import load_environment, create_db_pool
 
-# Set environment file explicitly if not production
-if os.getenv("ENV") == "dev":
-    load_dotenv(dotenv_path=".env.dev")
-else:
-    load_dotenv()
+# ====== Load Environment and DB ======
+load_environment(".env")  # production env
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+db_pool = create_db_pool()
 
+# ====== Logging ======
 warnings.filterwarnings("ignore", category=PTBUserWarning)
-
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     level=logging.INFO,
     filename="bot.log"
-)
-
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-DB_HOST = os.getenv("DB_HOST")
-DB_USER = os.getenv("DB_USER")
-DB_PASS = os.getenv("DB_PASS")
-DB_NAME = os.getenv("DB_NAME")
-DB_PORT = int(os.getenv("DB_PORT", 3306))
-
-db_pool = pooling.MySQLConnectionPool(
-    pool_name="bot_pool",
-    pool_size=5,
-    pool_reset_session=True,
-    host=DB_HOST,
-    port=DB_PORT,
-    user=DB_USER,
-    password=DB_PASS,
-    database=DB_NAME
 )
 
 # Exported state constants
@@ -476,5 +455,7 @@ def main():
 
     print("🤖 Running Telegram bot...")
     app.run_polling()
+
+
 if __name__ == '__main__':
     main()

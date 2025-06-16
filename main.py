@@ -7,7 +7,7 @@ from telegram.ext import (
     ApplicationBuilder, CommandHandler, MessageHandler, ConversationHandler,
     CallbackQueryHandler, ContextTypes, filters
 )
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from config import load_environment, create_db_pool
 
 # ====== Load Environment and DB ======

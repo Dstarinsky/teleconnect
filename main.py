@@ -432,10 +432,9 @@ async def show_ads_by_area(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-async def main():
+def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-    # Conversation handler
     conv_handler = ConversationHandler(
         entry_points=[CallbackQueryHandler(start_post_ad, pattern='^post_ad$')],
         states={
@@ -455,34 +454,13 @@ async def main():
     )
 
     app.add_handler(conv_handler)
-    app.add_handler(CallbackQueryHandler(handle_buttons, pattern='^(?!post_ad$).*'))
+    app.add_handler(CallbackQueryHandler(handle_buttons))
     app.add_handler(CommandHandler("start", start))
     app.add_error_handler(error_handler)
 
-    print("🤖 Running Telegram bot...")
+    print("🚧 Running bot...")
+    app.run_polling()
 
-    await app.bot.delete_webhook(drop_pending_updates=True)
-    await app.run_polling()
 
 if __name__ == '__main__':
-    import asyncio
-
-    async def safe_main():
-        try:
-            await main()
-        except RuntimeError as e:
-            if "This event loop is already running" in str(e):
-                # If already running, just create task without awaiting main()
-                asyncio.get_running_loop().create_task(main())
-            else:
-                raise
-
-    try:
-        asyncio.run(safe_main())
-    except RuntimeError as e:
-        if "This event loop is already running" in str(e):
-            # For environments where the loop is already running at startup
-            loop = asyncio.get_running_loop()
-            loop.create_task(main())
-        else:
-            raise
+    main()

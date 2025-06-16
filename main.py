@@ -11,6 +11,7 @@ from telegram.ext import (
 )
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from config import load_environment, create_db_pool
+from datetime import datetime
 
 # ====== Load Environment and DB ======
 load_environment(".env")  # production env

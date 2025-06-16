@@ -321,16 +321,37 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         conn = db_pool.get_connection()
         cursor = conn.cursor()
         try:
+            # Check if user already reported this ad
+            cursor.execute("SELECT COUNT(*) FROM ad_reports WHERE ad_id = %s AND user_id = %s", (ad_id, user_id))
+            already_reported = cursor.fetchone()[0]
+            if already_reported:
+                await query.message.reply_text("⚠️ כבר דיווחת על מודעה זו.")
+                return
+
+            # Insert new report
             cursor.execute("""
-                INSERT INTO ad_reports (ad_id, user_id, reported_at)
-                VALUES (%s, %s, NOW())
-            """, (ad_id, user_id))
+                    INSERT INTO ad_reports (ad_id, user_id, reported_at)
+                    VALUES (%s, %s, NOW())
+                """, (ad_id, user_id))
             conn.commit()
+
+            # Check report count
+            cursor.execute("SELECT COUNT(*) FROM ad_reports WHERE ad_id = %s", (ad_id,))
+            report_count = cursor.fetchone()[0]
+
+            if report_count >= 3:
+                # Auto-delete the ad
+                cursor.execute("DELETE FROM ads WHERE id = %s", (ad_id,))
+                conn.commit()
+                await query.message.reply_text("🚫 המודעה נמחקה אוטומטית לאחר שקיבלה 3 דיווחים.")
+            else:
+                await query.message.reply_text("✅ תודה! הדיווח התקבל ונבדוק את המודעה בהקדם.")
+        except Exception as e:
+            logging.error("Failed to process report: %s", e)
+            await query.message.reply_text("❌ שגיאה במהלך הדיווח. נסה שוב מאוחר יותר.")
         finally:
             cursor.close()
             conn.close()
-
-        await query.message.reply_text("✅ תודה! הדיווח התקבל ונבדוק את המודעה בהקדם.")
     elif query.data == 'main_menu':
         await query.message.delete()
         await start(update, context)

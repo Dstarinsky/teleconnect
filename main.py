@@ -464,14 +464,6 @@ def main():
         await app.bot.delete_webhook(drop_pending_updates=True)
         await app.run_polling()
 
-    try:
-        asyncio.run(run())
-    except RuntimeError as e:
-        if "already running" in str(e):
-            loop = asyncio.get_event_loop()
-            loop.create_task(run())
-        else:
-            raise
 
 if __name__ == '__main__':
     main()

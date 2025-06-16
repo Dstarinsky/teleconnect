@@ -19,8 +19,7 @@ db_pool = create_db_pool()
 warnings.filterwarnings("ignore", category=PTBUserWarning)
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    level=logging.INFO,
-    filename="bot.log"
+    level=logging.INFO
 )
 
 # Exported state constants

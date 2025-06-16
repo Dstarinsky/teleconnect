@@ -432,10 +432,10 @@ async def show_ads_by_area(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-def main():
+async def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-    # Your handlers setup
+    # Conversation handler
     conv_handler = ConversationHandler(
         entry_points=[CallbackQueryHandler(start_post_ad, pattern='^post_ad$')],
         states={
@@ -446,24 +446,24 @@ def main():
             CAPACITY: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_capacity)],
             DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_date)],
             EDIT_FIELD: [CallbackQueryHandler(handle_buttons, pattern='^field:.*')],
-            EDIT_VALUE: [MessageHandler(filters.TEXT & ~filters.COMMAND, update_ad_value),
-                         CallbackQueryHandler(handle_buttons, pattern='^value:.*')]
+            EDIT_VALUE: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, update_ad_value),
+                CallbackQueryHandler(handle_buttons, pattern='^value:.*')
+            ]
         },
         fallbacks=[]
     )
 
     app.add_handler(conv_handler)
-
     app.add_handler(CallbackQueryHandler(handle_buttons, pattern='^(?!post_ad$).*'))
     app.add_handler(CommandHandler("start", start))
     app.add_error_handler(error_handler)
 
     print("🤖 Running Telegram bot...")
 
-    async def run():
-        await app.bot.delete_webhook(drop_pending_updates=True)
-        await app.run_polling()
-
+    await app.bot.delete_webhook(drop_pending_updates=True)
+    await app.run_polling()
 
 if __name__ == '__main__':
-    main()
+    import asyncio
+    asyncio.run(main())
